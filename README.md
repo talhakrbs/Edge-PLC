@@ -21,7 +21,6 @@ Proje; saha analizi, şematik tasarımı, 4 katmanlı PCB düzeni, 3D kasa model
 | 🔗 | I/O Genişletici | 4× MCP23017/MCP23S17 (I²C + SPI, 16-bit) |
 | 🧱 | PCB | 4 katman — Top / GND / PWR / Bottom |
 | 📦 | Kasa | PCB'ye özel 3D modellenmiş endüstriyel kasa |
-| 🐸 | Easter Egg | Silkscreen'de gizli bir kurbağa yaşıyor |
 
 ---
 
