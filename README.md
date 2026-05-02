@@ -1,5 +1,5 @@
 ## Proje Hakkında
-
+ 
 **EDGE PLC**, üretim hattı istasyonları arasındaki uzun kontrol kablolarını ortadan kaldırmak amacıyla tasarlanmış, kablosuz haberleşmeli bir endüstriyel I/O kontrol kartıdır.
 
 32 izole dijital giriş ve 32 Darlington çıkışıyla saha sinyallerini okuyup sürerken, **WiFi 802.11** üzerinden merkezi sisteme veri aktarır. Aynı ağda çalışan birden fazla kart birbirinden bağımsız şekilde haberleşebilir.
