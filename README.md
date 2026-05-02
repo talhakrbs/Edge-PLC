@@ -33,22 +33,22 @@ Proje; saha analizi, şematik tasarımı, 4 katmanlı PCB düzeni, 3D kasa model
 │         I²C Bus              SPI Bus            │
 └────────────┬─────────────────────┬──────────────┘
              │                     │
-   ┌──────────▼──────┐   ┌─────────▼──────────┐
-   │  MCP23017 × 2   │   │   MCP23S17 × 2     │
-   │  Expander 0 & 1 │   │   Expander 2 & 3   │
-   │  I²C: 0x20/0x24 │   │   SPI: CS hatları  │
+   ┌──────────▼──────┐   ┌─────────▼───────────┐
+   │  MCP23017 × 2   │   │   MCP23S17 × 2      │
+   │  Expander 0 & 1 │   │   Expander 2 & 3    │
+   │  I²C: 0x20/0x24 │   │   SPI: CS hatları   │
    └────────┬────────┘   └──────────┬──────────┘
             │ 32 GPIO               │ 32 GPIO
-   ┌────────▼────────┐   ┌──────────▼──────────┐
-   │  GİRİŞ BLOĞU   │   │    ÇIKIŞ BLOĞU       │
+   ┌────────▼────────┐   ┌──────────▼───────────┐
+   │  GİRİŞ BLOĞU    │   │    ÇIKIŞ BLOĞU       │
    │  32× TLP290x    │   │  32× Darlington      │
    │  Optokuplör     │   │  24V Yük Sürücü      │
    │  + TVS Koruma   │   │  + Flyback Diyot     │
    └─────────────────┘   └──────────────────────┘
  
    ┌──────────────────────────────────────────┐
-   │            GÜÇ KAYNAĞI                  │
-   │    24V DC → TPS54202HDDCR → 3,3V/2A    │
+   │            GÜÇ KAYNAĞI                   │
+   │    24V DC → TPS54202HDDCR → 3,3V/2A      │
    └──────────────────────────────────────────┘
 ```
  
@@ -170,7 +170,7 @@ GND ve PWR düzlemleri, tüm kart boyunca sürekli bakır alan oluşturarak hem 
  
 ## PCB Düzeni
  
-![2D PCB Düzeni](./2d_kart.png)
+![2D PCB Düzeni](./2d kart.png)
  
 Kart üzerinde güç (24V) ve lojik (3,3V) bölgeleri birbirinden net şekilde ayrılmıştır. Tüm kenarlardaki vidalı terminal blokları saha kablolama için doğrudan erişim sağlar. Dört köşedeki montaj delikleri DIN ray ve panel montajına uygundur.
  
@@ -215,7 +215,7 @@ EDGE-PLC/
 ├── mechanical/
 │   ├── case_closed.jpg        Kasa — ön kapak görünümü
 │   └── case_open.jpg          Kasa — kart yerleşik görünüm
-├── firmware/                  (yakında)
+|
 └── README.md
 ```
  
