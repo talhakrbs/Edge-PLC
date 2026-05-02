@@ -1,2 +1,238 @@
-# Edge-PLC
-Fabrika otomasyonu için tasarlanmış endüstriyel sınıf kablosuz Edge I/O kontrol kartı. ESP32-WROOM-32U tabanlı sistem, 32 optik izolasyonlu dijital giriş ve 32 yüksek akım kapasiteli çıkış sunarak WiFi üzerinden güvenilir ve kablosuz sinyal izleme ve kontrol imkânı sağlar.
+## Proje Hakkında
+ 
+**EDGE PLC**, üretim hattı istasyonları arasındaki uzun kontrol kablolarını ortadan kaldırmak amacıyla tasarlanmış, kablosuz haberleşmeli bir endüstriyel I/O kontrol kartıdır.
+ 
+32 izole dijital giriş ve 32 Darlington çıkışıyla saha sinyallerini okuyup sürerken, **WiFi 802.11** üzerinden merkezi sisteme veri aktarır. Aynı ağda çalışan birden fazla kart birbiriyle karışmaması için **fiziksel MAC adresleriyle** tanımlanır.
+ 
+Proje; saha analizi, şematik tasarımı, 4 katmanlı PCB düzeni, 3D kasa modelleme ve firmware geliştirme süreçlerini kapsayan uçtan uca bir gömülü donanım çalışmasıdır.
+ 
+---
+ 
+## Özellikler
+ 
+| | Özellik | Detay |
+|---|---|---|
+| 🧠 | Mikrodenetleyici | ESP32-WROOM-32U — Xtensa LX6 çift çekirdek, 240 MHz |
+| 📡 | Kablosuz Haberleşme | WiFi 802.11 b/g/n, MAC adresli kart tanımlama |
+| 🔢 | Dijital Girişler | 32 kanal, optokuplör galvanik izolasyon (TLP290x) |
+| ⚡ | Dijital Çıkışlar | 32 kanal, Darlington transistör dizisi, 24V/500mA |
+| 🔌 | Besleme | 24V DC endüstriyel standart |
+| 🔋 | Lojik Güç | 3,3V @ 2A — TPS54202HDDCR yerleşik buck dönüştürücü |
+| 🔗 | I/O Genişletici | 4× MCP23017/MCP23S17 (I²C + SPI, 16-bit) |
+| 🧱 | PCB | 4 katman — Top / GND / PWR / Bottom |
+| 📦 | Kasa | PCB'ye özel 3D modellenmiş endüstriyel kasa |
+| 🐸 | Easter Egg | Silkscreen'de gizli bir kurbağa yaşıyor |
+ 
+---
+ 
+## Donanım Mimarisi
+ 
+```
+┌─────────────────────────────────────────────────┐
+│                ESP32-WROOM-32U                  │
+│         I²C Bus              SPI Bus            │
+└────────────┬─────────────────────┬──────────────┘
+             │                     │
+   ┌──────────▼──────┐   ┌─────────▼──────────┐
+   │  MCP23017 × 2   │   │   MCP23S17 × 2     │
+   │  Expander 0 & 1 │   │   Expander 2 & 3   │
+   │  I²C: 0x20/0x24 │   │   SPI: CS hatları  │
+   └────────┬────────┘   └──────────┬──────────┘
+            │ 32 GPIO               │ 32 GPIO
+   ┌────────▼────────┐   ┌──────────▼──────────┐
+   │  GİRİŞ BLOĞU   │   │    ÇIKIŞ BLOĞU       │
+   │  32× TLP290x    │   │  32× Darlington      │
+   │  Optokuplör     │   │  24V Yük Sürücü      │
+   │  + TVS Koruma   │   │  + Flyback Diyot     │
+   └─────────────────┘   └──────────────────────┘
+ 
+   ┌──────────────────────────────────────────┐
+   │            GÜÇ KAYNAĞI                  │
+   │    24V DC → TPS54202HDDCR → 3,3V/2A    │
+   └──────────────────────────────────────────┘
+```
+ 
+---
+ 
+## Şematikler
+ 
+### Mikrodenetleyici — ESP32-WROOM-32U
+ 
+Ana kontrol birimi. I²C ve SPI hatları üzerinden tüm IO genişleticileri yönetir, WiFi yığınını çalıştırır, uygulama mantığını işler. Kritik bus hatlarına 4,7 kΩ pull-up dirençleri yerleştirilmiştir.
+ 
+![MCU Şematik](./mcu.png)
+ 
+---
+ 
+### I/O Genişleticiler — MCP23017 & MCP23S17
+ 
+ESP32'den toplamda 64 GPIO pini elde etmek amacıyla 4 adet 16-bit GPIO genişletici kullanılmıştır. Kesme hatları (INT_A / INT_B) olay güdümlü giriş işleme için ESP32'ye bağlanmıştır.
+ 
+| Genişletici | Tip | Protokol | Adres / CS |
+|---|---|---|---|
+| Expander 0 | MCP23017-E/SP | I²C | 0x20 |
+| Expander 1 | MCP23017-E/SP | I²C | 0x24 |
+| Expander 2 | MCP23S17-E/SP | SPI | CS0 |
+| Expander 3 | MCP23S17-E/SP | SPI | CS1 |
+ 
+![IO Expander Şematik](./IOExpander.png)
+ 
+---
+ 
+### Dijital Giriş Katmanı — 32 Kanal Optokuplör
+ 
+Tüm 32 giriş kanalı **TLP290x** optokuplörlerle galvanik olarak izole edilmiştir. Her kanala seri **SMA230CA TVS diyot** ve **1,3 kΩ akım sınırlama direnci** eklenmiştir. Bu yapı, ESP32'yi endüstriyel ortamdaki gerilim darbelerine ve toprak döngülerine karşı korur.
+ 
+![Giriş Şematik](./input.png)
+ 
+---
+ 
+### Dijital Çıkış Katmanı — 32 Kanal Darlington
+ 
+Tüm 32 çıkış kanalı 8'li Darlington transistör dizisi IC'leri üzerinden sürülmektedir. İndüktif yükler (röle, solenoid vb.) için geri tepme diyotları entegre edilmiştir. Her dizinin besleme pinine 10 µF + 0,1 µF bloklama kondansatörü eklenmiştir.
+ 
+![Çıkış Şematik](./output.png)
+ 
+---
+ 
+### Güç Kaynağı — 24V → 3,3V Buck Dönüştürücü
+ 
+Yerleşik **TPS54202HDDCR** senkron buck dönüştürücü, 24V endüstriyel girişi lojik devreler için kararlı 3,3V'a düşürür.
+ 
+| Parametre | Değer |
+|---|---|
+| Giriş | 24V DC |
+| Çıkış | 3,3V @ 2A |
+| Bobin | SRI1209-100M — 100 µH |
+| Geri Besleme | R2: 100 kΩ / R3: 22,1 kΩ |
+| Enable | R1 510 kΩ ile HIGH'a çekilmiş |
+ 
+![Buck Dönüştürücü Şematik](./buck_converter.png)
+ 
+---
+ 
+## I/O Spesifikasyonu
+ 
+### Dijital Girişler — DI0 … DI31
+ 
+| Parametre | Değer |
+|---|---|
+| Kanal Sayısı | 32 |
+| Nominal Giriş Gerilimi | 24V DC |
+| İzolasyon | Galvanik — TLP290x optokuplör |
+| Koruma | Kanal başına SMA230CA TVS |
+| Lojik Seviye | Aktif HIGH |
+| Konnektör | Vidalı terminal — kartın sağ kenarı |
+ 
+### Dijital Çıkışlar — DO0 … DO31
+ 
+| Parametre | Değer |
+|---|---|
+| Kanal Sayısı | 32 |
+| Çıkış Tipi | Açık kollektör — Darlington sink |
+| Maks. Çıkış Gerilimi | 24V DC |
+| Maks. Kanal Akımı | 500 mA |
+| İndüktif Yük Koruması | Yerleşik flyback diyotları |
+| Konnektör | Vidalı terminal — kartın sol kenarı |
+ 
+---
+ 
+## Haberleşme Tasarımı
+ 
+Kart, kısa mesafeli fabrika ortamında kablosuz haberleşme için **WiFi 802.11** teknolojisini kullanır. Teknoloji seçimi, konuşlama alanının saha analizi sonucunda yapılmıştır.
+ 
+**WiFi'ın tercih nedenleri:**
+- Mevcut fabrika ağ altyapısıyla doğrudan uyumluluk
+- Ek ağ geçidi donanımı gerektirmemesi
+- Gerçek zamanlı I/O aktarımı için yeterli bant genişliği
+**MAC adresli tanımlama:** Her kart, ESP32'nin donanımsal MAC adresiyle sisteme kaydedilir. Aynı ağ segmentinde çalışan birden fazla EDGE PLC kartı arasında sinyal karışması bu yöntemle önlenir.
+ 
+**ESP32-WROOM-32U tercih nedenleri:**
+- U.FL harici anten konnektörü — metal yoğun ortamda güçlü RF performansı
+- ESP-IDF tabanlı endüstriyel kalite WiFi yığını
+- Çift çekirdekli mimari — ağ ve I/O görevleri ayrı çekirdeklerde çalışır
+---
+ 
+## PCB Katman Yapısı
+ 
+Kart, endüstriyel EMI bağışıklığı ve düşük empedanslı güç dağıtımı için **4 katmanlı** olarak tasarlanmıştır.
+ 
+| Katman | Adı | İşlev |
+|---|---|---|
+| 1 | Top Copper | Sinyal izleri (SPI, I²C, lojik) + SMD bileşenler |
+| 2 | GND Plane | Sürekli toprak düzlemi — EMI kalkanı ve dönüş akımı |
+| 3 | PWR Plane | 3,3V ve 24V güç dağıtım düzlemi |
+| 4 | Bottom Copper | Sinyal izleri + THT bileşenler + terminal yolları |
+ 
+GND ve PWR düzlemleri, tüm kart boyunca sürekli bakır alan oluşturarak hem elektromanyetik bağışıklığı artırır hem de güç geçiş gürültüsünü bastırır.
+ 
+---
+ 
+## PCB Düzeni
+ 
+![2D PCB Düzeni](./2d_kart.png)
+ 
+Kart üzerinde güç (24V) ve lojik (3,3V) bölgeleri birbirinden net şekilde ayrılmıştır. Tüm kenarlardaki vidalı terminal blokları saha kablolama için doğrudan erişim sağlar. Dört köşedeki montaj delikleri DIN ray ve panel montajına uygundur.
+ 
+---
+ 
+## Mekanik Tasarım & Kasa
+ 
+PCB tasarımıyla paralel yürütülen süreçte, karta tam uyumlu bir **endüstriyel kasa** 3D olarak modellenmiştir.
+ 
+<table>
+  <tr>
+    <td align="center"><b>Kapalı Görünüm</b></td>
+    <td align="center"><b>Açık Görünüm — Kart Yerleşik</b></td>
+  </tr>
+  <tr>
+    <td><img src="./case_closed.jpg" alt="Kapalı Kasa"/></td>
+    <td><img src="./case_open.jpg" alt="Açık Kasa"/></td>
+  </tr>
+</table>
+| Özellik | Detay |
+|---|---|
+| Montaj | 4 köşe vida ile kart sabitleme |
+| Terminal Erişimi | Sol ve sağ kenarda açık kanallar |
+| LCD Penceresi | Ön kapakta ekran görüntüleme açıklığı |
+| Form Faktör | PCB boyutlarıyla tam uyumlu |
+ 
+---
+ 
+## Dosya Yapısı
+ 
+```
+EDGE-PLC/
+├── schematic/
+│   ├── mcu.png                ESP32 MCU şematiği
+│   ├── IOExpander.png         MCP23017/S17 genişletici şematiği
+│   ├── input.png              Optokuplör giriş katmanı
+│   ├── output.png             Darlington çıkış katmanı
+│   └── buck_converter.png     24V → 3,3V güç kaynağı
+├── pcb/
+│   ├── 2d_kart.png            PCB 2D düzeni
+│   └── 3dkart.png             PCB 3D render
+├── mechanical/
+│   ├── case_closed.jpg        Kasa — ön kapak görünümü
+│   └── case_open.jpg          Kasa — kart yerleşik görünüm
+├── firmware/                  (yakında)
+└── README.md
+```
+ 
+---
+ 
+## Ekip
+ 
+| İsim | Rol |
+|---|---|
+| **Mustafa Talha Karabaş** | PCB Düzeni · Firmware · 3D Tasarım|
+| **Samet Akyol** | Donanım Tasarımı · PCB Düzeni |
+ 
+---
+ 
+<div align="center">
+Daikin Türkiye'de ☕ ve havya ile üretildi.
+ 
+![Daikin](https://img.shields.io/badge/DAIKIN-Üretim_Mükemmeliyeti-0070C0?style=for-the-badge)
+ 
+</div>
