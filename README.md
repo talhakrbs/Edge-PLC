@@ -6,7 +6,7 @@
 
 Proje; saha analizi, şematik tasarımı, 4 katmanlı PCB düzeni, 3D kasa modelleme ve firmware geliştirme süreçlerini kapsayan uçtan uca bir gömülü donanım çalışmasıdır.
 
----
+---        
 
 ## Özellikler
 
